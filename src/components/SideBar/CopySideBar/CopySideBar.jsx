@@ -6,7 +6,7 @@ import QrCode from "../SidebarComponents/QrCode";
 import useStore from "../../../lib/ZustStore";
 import { toast } from "sonner";
 import { useLocalStorage } from "react-use";
-import { FaDownload } from "react-icons/fa";
+import { FaDownload, FaSave } from "react-icons/fa";
 import { BsBoxArrowInUpRight } from "react-icons/bs";
 
 function CopySideBar() {
@@ -18,21 +18,38 @@ function CopySideBar() {
     setPageInfo,
     updatePageInfo,
     setPageInfoToDB,
+    saveDocument,
   } = useStore((state) => state);
   const [copyValue] = useState(pageInfo.link);
   const [localValue, setLocalValue] = useLocalStorage("dopasteEdit", []);
   const [settings, setSettings] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(
-      `${process.env.VITE_APP_VIEW}${pageInfo.link}`
-    );
+    const linkToCopy = `${import.meta.env.VITE_APP_VIEW}${pageInfo.link}`;
+    console.log("Copying link:", linkToCopy);
+    navigator.clipboard.writeText(linkToCopy);
     toast("Link Copied");
   };
 
-  const PublishPage = () => {
-    if (pageInfo.link) {
-      setPageInfoToDB(setLocalValue);
+  const PublishPage = async () => {
+    if (!pageInfo.title || !pageInfo.content || !pageInfo.author) {
+      toast.error("Please fill in all required fields");
+      return;
+    }
+    if (!pageInfo.link) {
+      await generateRandomUrl();
+    }
+    toast.loading("Publishing page...");
+    try {
+      const result = await setPageInfoToDB(setLocalValue);
+      if (result) {
+        toast.success("Page published successfully!");
+      } else {
+        toast.error("Failed to publish page. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error publishing page:", error);
+      toast.error(`Failed to publish page: ${error.message}`);
     }
   };
 
@@ -67,6 +84,18 @@ function CopySideBar() {
     setPageInfo("expiry", expiryDate);
   };
 
+  const handleSave = async () => {
+    toast.loading("Saving document...");
+    const savedDoc = await saveDocument();
+    if (savedDoc) {
+      setPageInfo("link", savedDoc.$id);
+      setPublishStatus(true);
+      toast.success("Document saved successfully!");
+    } else {
+      toast.error("Failed to save document. Please try again.");
+    }
+  };
+
   return (
     <SideBarWrapper
       className={`${
@@ -85,7 +114,7 @@ function CopySideBar() {
           type="text"
           className="w-full  rounded-full outline-none pl-2  pr-10"
           placeholder="Copy Url"
-          value={`${process.env.VITE_APP_VIEW}${pageInfo.link}`}
+          value={`${import.meta.env.VITE_APP_VIEW}${pageInfo.link}`}
           readOnly
         />
         {editLink && (
@@ -167,25 +196,36 @@ function CopySideBar() {
           </div>
         )}
       </section>
-      {editLink ? (
+
+      <div className="flex w-2/3 items-center gap-2">
         <button
-          onClick={() => updatePageInfo(editLink, localValue)}
-          className=" bg-secondary w-2/3  outline-accent hover:outline text-primary px-4 p-2 rounded-full"
+          onClick={handleSave}
+          className="bg-accent text-white p-2 rounded-md hover:bg-secondary transition-colors"
+          title="Save Document"
         >
-          Update
+          <FaSave className="text-xl" />
         </button>
-      ) : (
-        <button
-          onClick={PublishPage}
-          className=" bg-secondary w-2/3 outline-accent hover:outline text-primary px-4 p-2 rounded-full"
-        >
-          Publish Now
-        </button>
-      )}
+
+        {editLink ? (
+          <button
+            onClick={() => updatePageInfo(editLink, localValue)}
+            className="bg-secondary flex-grow outline-accent hover:outline text-primary px-4 p-2 rounded-full"
+          >
+            Update
+          </button>
+        ) : (
+          <button
+            onClick={PublishPage}
+            className="bg-secondary flex-grow outline-accent hover:outline text-primary px-4 p-2 rounded-full"
+          >
+            Publish Now
+          </button>
+        )}
+      </div>
 
       {editLink && (
         <a
-          href={`${process.env.VITE_APP_VIEW}${pageInfo.link}`}
+          href={`${import.meta.env.VITE_APP_VIEW}${pageInfo.link}`}
           target="_blank"
           className="font-semibold hover:underline flex gap-1 items-center"
         >
