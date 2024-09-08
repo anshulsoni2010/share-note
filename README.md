@@ -9,7 +9,7 @@
 
 ## Stack and packages
 
-- **React**: Front-end framework for building user interfaces.
+- **React**: Front-end framdework for building user interfaces.
 - **tailwindcss**: Tailwind CSS is a utility-first CSS framework for rapidly building custom user interfaces.
 - **appwrite v-13.0.1**: Appwrite is an open-source backend-as-a-service platform for building web and mobile applications.
 - **Vite**: Vite is a new build system for modern web development.

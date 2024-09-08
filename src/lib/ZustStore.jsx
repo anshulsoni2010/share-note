@@ -13,7 +13,6 @@ const useStore = create((set, get) => ({
   },
 
   pageInfo: {
-    title: null,
     content: "",
     author: (() => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -39,6 +38,7 @@ const useStore = create((set, get) => ({
   editLink: null,
   publishStatus: false,
   showModal: true,
+  user: null,
 
   setPageInfo: (name, data) => {
     const { pageInfo } = get();
@@ -77,19 +77,22 @@ const useStore = create((set, get) => ({
     const { collectionId, databaseId } = get().initialState;
 
     try {
-      const res = await databases.getDocuments(databaseId, collectionId, [
-        Query.equal("link", link),
-      ]);
-      return res.documents.length > 0;
+      const res = await databases.listDocuments(databaseId, collectionId);
+      return res.documents.some(doc => doc.link === link);
     } catch (error) {
-      console.log(error);
+      console.error('Error in getSameLink:', error);
       return false;
     }
   },
 
   setPageInfoToDB: async (setLocalValue) => {
+    const { user } = get();
+    if (!user) {
+      toast.error("You must be logged in to perform this action");
+      return false;
+    }
+
     const {
-      title,
       content,
       author,
       visibility,
@@ -109,33 +112,24 @@ const useStore = create((set, get) => ({
     console.log('Collection ID:', collectionId);
 
     try {
-      if (!title) {
-        toast.error("Title cannot be empty");
-        return;
-      }
-
-      if(!content){
-        toast.error("content cannot be empty");
-        return;
+      if (!content) {
+        toast.error("Content cannot be empty");
+        return false;
       }
 
       if (!author) {
-        toast.error("author name cannot be empty");
-        return;
+        toast.error("Author name cannot be empty");
+        return false;
       }
 
-      const res = await databases.listDocuments(databaseId, collectionId, [
-        Query.equal("link", link),
-      ]);
-
-      if (res.documents.length > 0) {
+      const existingDocs = await databases.listDocuments(databaseId, collectionId);
+      if (existingDocs.documents.some(doc => doc.link === link)) {
         toast.error("Link Already Exists");
-        return;
+        return false;
       }
 
       try {
         const newDocument = {
-          title,
           content,
           author,
           visibility,
@@ -154,19 +148,23 @@ const useStore = create((set, get) => ({
         const res = await databases.createDocument(
           databaseId,
           collectionId,
-          "unique()",
+          ID.unique(),
           newDocument
         );
         console.log('Document created:', res);
         toast.success("Page Published successfully");
         setLocalValue((prev) => [...prev, res.$id]);
-        return set({ editLink: res.$id });
+        set({ editLink: res.$id });
+        return true;
       } catch (err) {
         console.error('Error creating document:', err);
-        toast.error(`Error: ${err.message}`);
+        toast.error(`Error creating document: ${err.message}`);
+        return false;
       }
     } catch (err) {
-      console.error(err.message);
+      console.error('Error in setPageInfoToDB:', err);
+      toast.error(`Error: ${err.message}`);
+      return false;
     }
   },
 
@@ -194,13 +192,12 @@ const useStore = create((set, get) => ({
     const { databaseId, collectionId } = get().initialState;
     console.log("Fetching document for link:", link);
     try {
-      const response = await databases.listDocuments(databaseId, collectionId, [
-        Query.equal("link", link),
-      ]);
+      const response = await databases.listDocuments(databaseId, collectionId);
       console.log("Database response:", response);
-      if (response.documents.length > 0) {
-        console.log("Document found:", response.documents[0]);
-        set({ pageInfo: response.documents[0] });
+      const document = response.documents.find(doc => doc.link === link);
+      if (document) {
+        console.log("Document found:", document);
+        set({ pageInfo: document });
       } else {
         console.log("No document found with the given link");
       }
@@ -231,24 +228,19 @@ const useStore = create((set, get) => ({
       return toast.error("Unauthorized Access");
     }
     try {
-      if (!pageInfo.title) {
-        toast.error("Title cannot be empty");
-        return;
-      }
-       if (!pageInfo.content) {
-        toast.error("content cannot be empty");
-        return;
+      if (!pageInfo.content) {
+        toast.error("Content cannot be empty");
+        return false;
       }
       if (!pageInfo.author) {
-        toast.error("author name cannot be empty");
-        return;
+        toast.error("Author name cannot be empty");
+        return false;
       }
       const res = await databases.updateDocument(
         databaseId,
         collectionId,
         editLink,
         {
-          title: pageInfo.title,
           content: pageInfo.content,
           author: pageInfo.author,
           visibility: pageInfo.visibility,
@@ -265,10 +257,14 @@ const useStore = create((set, get) => ({
       );
       if (res) {
         toast.success("Page Updated successfully");
+        return true;
       }
     } catch (err) {
-      console.log(err);
+      console.error('Error updating document:', err);
+      toast.error(`Error updating document: ${err.message}`);
+      return false;
     }
+    return false;
   },
 
   totalPageViews: async () => {
@@ -379,9 +375,6 @@ const useStore = create((set, get) => ({
 
     try {
       // Check if required fields are present
-      if (!pageInfo.title) {
-        throw new Error("Title cannot be empty");
-      }
       if (!pageInfo.content) {
         throw new Error("Content cannot be empty");
       }
@@ -395,7 +388,6 @@ const useStore = create((set, get) => ({
       }
 
       const documentData = {
-        title: pageInfo.title,
         content: pageInfo.content,
         author: pageInfo.author,
         keywords: pageInfo.keywords,
@@ -410,6 +402,8 @@ const useStore = create((set, get) => ({
         password: pageInfo.password,
         createdAt: new Date().toISOString(),
       };
+
+      console.log('Document data to be saved:', JSON.stringify(documentData, null, 2));
 
       console.log('Attempting to save document:', documentData);
       console.log('Database ID:', databaseId);
@@ -448,6 +442,55 @@ const useStore = create((set, get) => ({
       console.error("Error fetching document:", error);
       toast.error("Failed to fetch document. Please try again.");
       return null;
+    }
+  },
+
+  login: async (email, password) => {
+    console.log('Attempting login with email:', email);
+    try {
+      const session = await account.createEmailSession(email, password);
+      console.log('Session created:', session);
+      const user = await account.get();
+      console.log('User fetched:', user);
+      set({ user });
+      return user;
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  },
+
+  logout: async () => {
+    try {
+      await account.deleteSession('current');
+      set({ user: null });
+    } catch (error) {
+      console.error('Logout failed:', error);
+      throw error;
+    }
+  },
+
+  checkAuth: async () => {
+    try {
+      const user = await account.get();
+      set({ user });
+      return user;
+    } catch {
+      set({ user: null });
+      return null;
+    }
+  },
+
+  register: async (email, password) => {
+    try {
+      const response = await account.create(ID.unique(), email, password);
+      const session = await account.createEmailSession(email, password);
+      const user = await account.get();
+      set({ user });
+      return user;
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
     }
   },
 

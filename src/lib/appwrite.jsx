@@ -1,25 +1,16 @@
 import { Client, Account, Databases, Storage } from "appwrite";
 
-export const client = new Client();
-
-const endpoint = import.meta.env.VITE_APP_ENDPOINT;
-const projectId = import.meta.env.VITE_APP_PROJECT_ID;
-
-console.log('Appwrite Endpoint:', endpoint);
-console.log('Appwrite Project ID:', projectId);
-
-if (!endpoint || !projectId) {
-  console.error('Appwrite configuration is missing. Please check your .env file.');
-}
-
-client
-  .setEndpoint(endpoint)
-  .setProject(projectId);
+const client = new Client()
+    .setEndpoint(import.meta.env.VITE_APP_ENDPOINT)
+    .setProject(import.meta.env.VITE_APP_PROJECT_ID);
 
 export const account = new Account(client);
 export const databases = new Databases(client);
 export const storage = new Storage(client);
 export { ID } from "appwrite";
+
+// Remove or comment out the following line:
+// client.setKey(import.meta.env.VITE_APP_API_KEY);
 
 // the config for appwrite
 // id generate the unique id

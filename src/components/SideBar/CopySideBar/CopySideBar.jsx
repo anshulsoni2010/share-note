@@ -6,7 +6,7 @@ import QrCode from "../SidebarComponents/QrCode";
 import useStore from "../../../lib/ZustStore";
 import { toast } from "sonner";
 import { useLocalStorage } from "react-use";
-import { FaDownload, FaSave } from "react-icons/fa";
+import { FaDownload } from "react-icons/fa";
 import { BsBoxArrowInUpRight } from "react-icons/bs";
 
 function CopySideBar() {
@@ -18,7 +18,7 @@ function CopySideBar() {
     setPageInfo,
     updatePageInfo,
     setPageInfoToDB,
-    saveDocument,
+    user,
   } = useStore((state) => state);
   const [copyValue] = useState(pageInfo.link);
   const [localValue, setLocalValue] = useLocalStorage("dopasteEdit", []);
@@ -32,6 +32,10 @@ function CopySideBar() {
   };
 
   const PublishPage = async () => {
+    if (!user) {
+      toast.error("Please log in to publish a page");
+      return;
+    }
     if (!pageInfo.title || !pageInfo.content || !pageInfo.author) {
       toast.error("Please fill in all required fields");
       return;
@@ -82,18 +86,6 @@ function CopySideBar() {
       expiryDate = filterDate.toISOString().slice(0, 10);
     }
     setPageInfo("expiry", expiryDate);
-  };
-
-  const handleSave = async () => {
-    toast.loading("Saving document...");
-    const savedDoc = await saveDocument();
-    if (savedDoc) {
-      setPageInfo("link", savedDoc.$id);
-      setPublishStatus(true);
-      toast.success("Document saved successfully!");
-    } else {
-      toast.error("Failed to save document. Please try again.");
-    }
   };
 
   return (
@@ -198,14 +190,6 @@ function CopySideBar() {
       </section>
 
       <div className="flex w-2/3 items-center gap-2">
-        <button
-          onClick={handleSave}
-          className="bg-accent text-white p-2 rounded-md hover:bg-secondary transition-colors"
-          title="Save Document"
-        >
-          <FaSave className="text-xl" />
-        </button>
-
         {editLink ? (
           <button
             onClick={() => updatePageInfo(editLink, localValue)}

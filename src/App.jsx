@@ -1,21 +1,24 @@
-import React from 'react'
+import React, { useEffect } from 'react'
+import useStore from './lib/ZustStore'
 import TopLogo from './components/Common/TopLogo'
 import EditorBase from './components/EditorPage/EditorBase'
 import CopySideBar from './components/SideBar/CopySideBar/CopySideBar'
-import { useEffect } from 'react'
-import useStore from './lib/ZustStore'
+import AuthModal from './components/Auth/AuthModal'
 
 const App = () => {
- const { deleteDocument } = useStore((state) => state);
-useEffect(() => {
+ const { deleteDocument, checkAuth, user } = useStore();
+
+ useEffect(() => {
   deleteDocument();
-},[])
- 
+  checkAuth(); // Check authentication status on app load
+ }, [])
+
   return (
     <>
-    <TopLogo/>
-    <EditorBase/>
-    <CopySideBar/>
+      <TopLogo/>
+      <EditorBase/>
+      <CopySideBar/>
+      <AuthModal />
     </>
   )
 }
