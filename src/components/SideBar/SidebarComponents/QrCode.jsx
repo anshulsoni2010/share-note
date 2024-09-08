@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import QRCode from 'qrcode.react';
+import { QRCodeSVG } from 'qrcode.react';
 import useStore from "../../../lib/ZustStore";
 
 
@@ -9,7 +9,7 @@ function QrCode() {
 
   return (
     <>
-      <QRCode
+      <QRCodeSVG
         id="qrCodeEl"
         value={`${process.env.VITE_APP_VIEW}${pageInfo.link}`}
         size={128}
