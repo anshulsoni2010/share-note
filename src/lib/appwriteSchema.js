@@ -1,7 +1,7 @@
 // This file is for documentation purposes only and does not affect the actual Appwrite schema
 
 const shareNoteSchema = {
-  content: 'string',
+  title: 'string',
   author: 'string',
   keywords: 'string[]',
   link: 'string',

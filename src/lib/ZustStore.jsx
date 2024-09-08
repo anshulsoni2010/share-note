@@ -13,15 +13,16 @@ const useStore = create((set, get) => ({
   },
 
   pageInfo: {
-    content: "",
+    title: "",
     author: (() => {
       const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
       return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
     })(),
-    keywords: [],
     link: "",
-    userLink: null,
     visibility: true,
+    createdAt: new Date().toISOString(),
+    keywords: [],
+    userLink: null,
     expiry: (() => {
       let currentDate = new Date();
       let oneYearLater = new Date(currentDate);
@@ -92,33 +93,12 @@ const useStore = create((set, get) => ({
       return false;
     }
 
-    const {
-      content,
-      author,
-      visibility,
-      expiry,
-      password,
-      link,
-      onceRead,
-      likes,
-      dislikes,
-      viewCount,
-      userLink,
-      keywords,
-    } = get().pageInfo;
-    const { databaseId, collectionId, pageInfo } = get().initialState;
-
-    console.log('Database ID:', databaseId);
-    console.log('Collection ID:', collectionId);
+    const { title, author, link, visibility, createdAt, ...otherFields } = get().pageInfo;
+    const { databaseId, collectionId } = get().initialState;
 
     try {
-      if (!content) {
-        toast.error("Content cannot be empty");
-        return false;
-      }
-
-      if (!author) {
-        toast.error("Author name cannot be empty");
+      if (!title || !author || !link) {
+        toast.error("Title, author, and link are required");
         return false;
       }
 
@@ -128,39 +108,27 @@ const useStore = create((set, get) => ({
         return false;
       }
 
-      try {
-        const newDocument = {
-          content,
-          author,
-          visibility,
-          expiry,
-          password,
-          link,
-          onceRead,
-          likes,
-          dislikes,
-          viewCount,
-          userLink,
-          keywords,
-        };
+      const newDocument = {
+        title,
+        author,
+        link,
+        visibility: visibility !== undefined ? visibility : true,
+        createdAt: createdAt || new Date().toISOString(),
+        ...otherFields
+      };
 
-        console.log('Attempting to create document:', newDocument);
-        const res = await databases.createDocument(
-          databaseId,
-          collectionId,
-          ID.unique(),
-          newDocument
-        );
-        console.log('Document created:', res);
-        toast.success("Page Published successfully");
-        setLocalValue((prev) => [...prev, res.$id]);
-        set({ editLink: res.$id });
-        return true;
-      } catch (err) {
-        console.error('Error creating document:', err);
-        toast.error(`Error creating document: ${err.message}`);
-        return false;
-      }
+      console.log('Attempting to create document:', newDocument);
+      const res = await databases.createDocument(
+        databaseId,
+        collectionId,
+        ID.unique(),
+        newDocument
+      );
+      console.log('Document created:', res);
+      toast.success("Page Published successfully");
+      setLocalValue((prev) => [...prev, res.$id]);
+      set({ editLink: res.$id });
+      return true;
     } catch (err) {
       console.error('Error in setPageInfoToDB:', err);
       toast.error(`Error: ${err.message}`);
@@ -222,18 +190,14 @@ const useStore = create((set, get) => ({
 
   updatePageInfo: async (editLink, localValue) => {
     const { databaseId, collectionId } = get().initialState;
-    const { pageInfo } = get();
+    const { title, author, link, visibility, createdAt, ...otherFields } = get().pageInfo;
     const verify = localValue.find((item) => item === editLink);
     if (!verify) {
       return toast.error("Unauthorized Access");
     }
     try {
-      if (!pageInfo.content) {
-        toast.error("Content cannot be empty");
-        return false;
-      }
-      if (!pageInfo.author) {
-        toast.error("Author name cannot be empty");
+      if (!title || !author || !link) {
+        toast.error("Title, author, and link are required");
         return false;
       }
       const res = await databases.updateDocument(
@@ -241,18 +205,12 @@ const useStore = create((set, get) => ({
         collectionId,
         editLink,
         {
-          content: pageInfo.content,
-          author: pageInfo.author,
-          visibility: pageInfo.visibility,
-          expiry: pageInfo.expiry,
-          password: pageInfo.password,
-          link: pageInfo.link,
-          onceRead: pageInfo.onceRead,
-          likes: pageInfo.likes,
-          dislikes: pageInfo.dislikes,
-          viewCount: pageInfo.viewCount,
-          userLink: pageInfo.userLink,
-          keywords: pageInfo.keywords,
+          title,
+          author,
+          link,
+          visibility: visibility !== undefined ? visibility : true,
+          createdAt: createdAt || new Date().toISOString(),
+          ...otherFields
         }
       );
       if (res) {
@@ -370,44 +328,25 @@ const useStore = create((set, get) => ({
   },
 
   saveDocument: async () => {
-    const { pageInfo, initialState } = get();
-    const { databaseId, collectionId } = initialState;
+    const { title, author, link, visibility, createdAt, ...otherFields } = get().pageInfo;
+    const { databaseId, collectionId } = get().initialState;
 
     try {
-      // Check if required fields are present
-      if (!pageInfo.content) {
-        throw new Error("Content cannot be empty");
-      }
-      if (!pageInfo.author) {
-        throw new Error("Author name cannot be empty");
-      }
-
-      // Generate a unique link if not present
-      if (!pageInfo.link) {
-        pageInfo.link = await get().generateRandomUrl();
+      if (!title) {
+        toast.error("Title is required");
+        return null;
       }
 
       const documentData = {
-        content: pageInfo.content,
-        author: pageInfo.author,
-        keywords: pageInfo.keywords,
-        link: pageInfo.link,
-        userLink: pageInfo.userLink,
-        visibility: pageInfo.visibility,
-        expiry: pageInfo.expiry,
-        onceRead: pageInfo.onceRead,
-        viewCount: pageInfo.viewCount,
-        likes: pageInfo.likes,
-        dislikes: pageInfo.dislikes,
-        password: pageInfo.password,
-        createdAt: new Date().toISOString(),
+        title,  // Ensure this is always included
+        author,
+        link,
+        visibility: visibility !== undefined ? visibility : true,
+        createdAt: createdAt || new Date().toISOString(),
+        ...otherFields
       };
 
       console.log('Document data to be saved:', JSON.stringify(documentData, null, 2));
-
-      console.log('Attempting to save document:', documentData);
-      console.log('Database ID:', databaseId);
-      console.log('Collection ID:', collectionId);
 
       const response = await databases.createDocument(
         databaseId,

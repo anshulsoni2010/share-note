@@ -90,13 +90,13 @@ const View = () => {
 
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
-  if (!document || !document.title) return <div>No content found</div>;
+  if (!document || !document.title1) return <div>No content found</div>;
 
   return (
     <main className="h-screen w-full max-w-6xl mx-auto bg-primary p-1 md:px-5 pb-0 flex gap-3 pr-0 shadow-lg md:flex-row flex-col">
       <section className="h-fit md:h-full md:w-[70%] bg-primary flex flex-col gap-2">
         <h1 className="text-center text-3xl font-semibold">
-          {document.title}
+          {document.title1}
         </h1>
         <div
           id="pageContent"
